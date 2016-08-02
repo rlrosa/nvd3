@@ -146,6 +146,7 @@ nv.models.scatterChart = function() {
             gEnter.append('g').attr('class', 'nv-y nv-axis');
             gEnter.append('g').attr('class', 'nv-scatterWrap');
             gEnter.append('g').attr('class', 'nv-regressionLinesWrap');
+            gEnter.append('g').attr('class', 'nv-regressionEllipsesWrap');
             gEnter.append('g').attr('class', 'nv-distWrap');
             gEnter.append('g').attr('class', 'nv-legendWrap');
 
@@ -229,6 +230,61 @@ nv.models.scatterChart = function() {
                 .style('stroke-opacity', function (d, i) {
                     return (d.disabled || typeof d.slope === 'undefined' || typeof d.intercept === 'undefined') ? 0 : 1
                 });
+
+
+            wrap.select('.nv-regressionEllipsesWrap')
+                .attr('clip-path', 'url(#nv-edge-clip-' + scatter.id() + ')');
+
+            var regWrapEllipses = wrap
+                .select('.nv-regressionEllipsesWrap')
+                .selectAll('.nv-regEllipses')
+                .data(function (d) {
+                    return d;
+                });
+
+            regWrapEllipses.enter().append('g').attr('class', 'nv-regEllipses');
+
+            var regEllipse = regWrapEllipses.selectAll('.nv-regEllipse')
+                .data(function (d) {
+                    return [d]
+                });
+
+            regEllipse.enter()
+                .append('ellipse').attr('class', 'nv-regEllipse')
+                .style('stroke-opacity', 0);
+
+            // don't add ellipses unless we have ellipse center (x,y) and at
+            // least the radius rx. If ry isn't provided, we'll draw a circle.
+            // ie, take ry===rx.
+            regEllipse.filter(function(d) {
+                return d.ellipseCx !== undefined &&
+                  d.ellipseCy !== undefined &&
+                  d.ellipseRx !== undefined;
+            })
+                .watchTransition(renderWatch,
+                  'scatterPlusLineChart: regellipse')
+                .attr('cx', function (d) {
+                  return x(d.ellipseCx);
+                })
+                .attr('cy', function (d) {
+                  return y(d.ellipseCy);
+                })
+                .attr('rx', function (d) {
+                  return Math.abs(x(d.ellipseRx) - x(0));
+                })
+                .attr('ry', function (d) {
+                  return Math.abs(y(d.ellipseRy?d.ellipseRy:d.ellipseRx)-y(0));
+                })
+                .style('stroke', function (d, i, j) {
+                    return color(d, j)
+                })
+                .style('fill', 'none')
+                .style('stroke-opacity', function (d, i) {
+                    return (d.disabled || typeof d.ellipseCx === 'undefined' ||
+                            typeof d.ellipseCy === 'undefined' ||
+                            typeof d.ellipseRx === 'undefined') ? 0 : 1
+                });
+
 
             // Setup Axes
             if (showXAxis) {
